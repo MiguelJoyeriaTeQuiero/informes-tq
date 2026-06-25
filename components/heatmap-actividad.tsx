@@ -5,24 +5,20 @@ import { fmtEur, fmtNum } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface Celda {
+  tienda: string;
   dow: number;
   hora: number;
   euros: number;
   unidades: number;
 }
 
-// Lunes primero
 const DIAS = [
-  { dow: 1, label: "Lun" },
-  { dow: 2, label: "Mar" },
-  { dow: 3, label: "Mié" },
-  { dow: 4, label: "Jue" },
-  { dow: 5, label: "Vie" },
-  { dow: 6, label: "Sáb" },
+  { dow: 1, label: "Lun" }, { dow: 2, label: "Mar" }, { dow: 3, label: "Mié" },
+  { dow: 4, label: "Jue" }, { dow: 5, label: "Vie" }, { dow: 6, label: "Sáb" },
   { dow: 0, label: "Dom" },
 ];
+const TODAS = "__todas__";
 
-// interpola de claro (#eef6fb) a azul marca (#00557F)
 function color(t: number) {
   const a = [238, 246, 251];
   const b = [0, 85, 127];
@@ -32,25 +28,37 @@ function color(t: number) {
 
 export function HeatmapActividad({ data }: { data: Celda[] }) {
   const [metrica, setMetrica] = useState<"unidades" | "euros">("unidades");
+  const [tienda, setTienda] = useState<string>(TODAS);
 
+  const tiendas = useMemo(
+    () => [...new Set(data.map((c) => c.tienda).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
+    [data]
+  );
+
+  // Agrega por (dow,hora) según la tienda seleccionada (o todas)
   const { mapa, horas, max, pico } = useMemo(() => {
-    const mapa = new Map<string, Celda>();
-    let hMin = 23, hMax = 0, max = 0;
-    let pico: Celda | null = null;
+    const agg = new Map<string, { dow: number; hora: number; euros: number; unidades: number }>();
     for (const c of data) {
-      mapa.set(`${c.dow}-${c.hora}`, c);
-      if (c.unidades > 0) {
-        hMin = Math.min(hMin, c.hora);
-        hMax = Math.max(hMax, c.hora);
-      }
+      if (tienda !== TODAS && c.tienda !== tienda) continue;
+      const key = `${c.dow}-${c.hora}`;
+      const cur = agg.get(key) ?? { dow: c.dow, hora: c.hora, euros: 0, unidades: 0 };
+      cur.euros += Number(c.euros);
+      cur.unidades += Number(c.unidades);
+      agg.set(key, cur);
+    }
+    let hMin = 23, hMax = 0, max = 0;
+    let pico: { dow: number; hora: number; euros: number; unidades: number } | null = null;
+    for (const c of agg.values()) {
+      if (c.unidades > 0) { hMin = Math.min(hMin, c.hora); hMax = Math.max(hMax, c.hora); }
       const v = metrica === "euros" ? Math.abs(c.euros) : c.unidades;
-      if (v > max) { max = v; }
-      if (!pico || (metrica === "euros" ? Math.abs(c.euros) : c.unidades) > (metrica === "euros" ? Math.abs(pico.euros) : pico.unidades)) pico = c;
+      if (v > max) max = v;
+      const vp = pico ? (metrica === "euros" ? Math.abs(pico.euros) : pico.unidades) : -1;
+      if (v > vp) pico = c;
     }
     if (hMin > hMax) { hMin = 9; hMax = 21; }
     const horas = Array.from({ length: hMax - hMin + 1 }, (_, i) => hMin + i);
-    return { mapa, horas, max: max || 1, pico };
-  }, [data, metrica]);
+    return { mapa: agg, horas, max: max || 1, pico };
+  }, [data, metrica, tienda]);
 
   const fmt = metrica === "euros" ? fmtEur : fmtNum;
   const labelDia = (dow: number) => DIAS.find((d) => d.dow === dow)?.label ?? "";
@@ -64,23 +72,33 @@ export function HeatmapActividad({ data }: { data: Celda[] }) {
             Día de la semana × hora (local Canarias) · patrón de los últimos 12 meses
           </p>
         </div>
-        <div className="flex rounded-xl bg-slate-100 p-1">
-          <button onClick={() => setMetrica("unidades")}
-            className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              metrica === "unidades" ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
-            Operaciones
-          </button>
-          <button onClick={() => setMetrica("euros")}
-            className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              metrica === "euros" ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
-            Importe €
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={tienda}
+            onChange={(e) => setTienda(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-brand-blue"
+          >
+            <option value={TODAS}>Todas las tiendas</option>
+            {tiendas.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <div className="flex rounded-xl bg-slate-100 p-1">
+            <button onClick={() => setMetrica("unidades")}
+              className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                metrica === "unidades" ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
+              Operaciones
+            </button>
+            <button onClick={() => setMetrica("euros")}
+              className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                metrica === "euros" ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
+              Importe €
+            </button>
+          </div>
         </div>
       </div>
 
-      {pico && (pico.unidades > 0) && (
+      {pico && pico.unidades > 0 && (
         <p className="mb-3 text-sm text-slate-500">
-          Pico de actividad:{" "}
+          Pico {tienda === TODAS ? "(todas las tiendas)" : `en ${tienda}`}:{" "}
           <span className="font-semibold text-brand-dark">
             {labelDia(pico.dow)} a las {String(pico.hora).padStart(2, "0")}:00
           </span>{" "}
@@ -90,16 +108,12 @@ export function HeatmapActividad({ data }: { data: Celda[] }) {
 
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
-          {/* cabecera de horas */}
           <div className="flex">
             <div className="w-10 shrink-0" />
             {horas.map((h) => (
-              <div key={h} className="flex-1 px-0.5 text-center text-[10px] text-slate-400" style={{ minWidth: 26 }}>
-                {h}
-              </div>
+              <div key={h} className="flex-1 px-0.5 text-center text-[10px] text-slate-400" style={{ minWidth: 26 }}>{h}</div>
             ))}
           </div>
-          {/* filas por día */}
           {DIAS.map((d) => (
             <div key={d.dow} className="flex items-center">
               <div className="w-10 shrink-0 pr-2 text-right text-xs font-medium text-slate-500">{d.label}</div>
@@ -123,7 +137,6 @@ export function HeatmapActividad({ data }: { data: Celda[] }) {
         </div>
       </div>
 
-      {/* leyenda */}
       <div className="mt-4 flex items-center justify-end gap-2 text-xs text-slate-400">
         <span>Menos</span>
         {[0.1, 0.3, 0.5, 0.7, 0.9].map((t) => (

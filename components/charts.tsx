@@ -65,9 +65,10 @@ export function AreaTendencia({
         <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
         <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} width={60}
+          domain={[(min: number) => min - Math.abs(min) * 0.12, (max: number) => max + Math.abs(max) * 0.12]}
           tickFormatter={(v) => (formato === "euro" ? `${Math.round(v / 1000)}k` : fmtNum(v))} />
         <Tooltip content={<CajaTooltip fmt={fmt} />} />
-        <Area type="monotone" dataKey={dataKey} stroke={OSCURO} strokeWidth={2.5} fill="url(#g)" />
+        <Area type="monotone" dataKey={dataKey} stroke={OSCURO} strokeWidth={2.5} fill="url(#g)" baseValue="dataMin" />
       </AreaChart>
     </ResponsiveContainer>
   );

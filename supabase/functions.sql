@@ -156,17 +156,19 @@ returns table(
      and fecha_operacion >= desde and fecha_operacion < hasta;
 $$;
 
--- Mapa de calor: actividad por día de la semana (0=dom) × hora (0-23), hora local Canarias
+-- Mapa de calor: actividad por tienda × día de la semana (0=dom) × hora (0-23), hora local Canarias
+drop function if exists public.mapa_calor(text, timestamptz, timestamptz);
 create or replace function public.mapa_calor(p_operacion text, desde timestamptz, hasta timestamptz)
-returns table(dow int, hora int, euros numeric, unidades bigint)
+returns table(tienda text, dow int, hora int, euros numeric, unidades bigint)
 language sql stable as $$
-  select extract(dow  from (fecha_operacion at time zone 'Atlantic/Canary'))::int,
+  select coalesce(nullif(trim(tienda), ''), '(sin dato)'),
+         extract(dow  from (fecha_operacion at time zone 'Atlantic/Canary'))::int,
          extract(hour from (fecha_operacion at time zone 'Atlantic/Canary'))::int,
          coalesce(sum(pago_eur),0), count(*)
     from public.operaciones_unificadas
    where (p_operacion = 'todas' or operacion = p_operacion)
      and fecha_operacion >= desde and fecha_operacion < hasta
-   group by 1, 2;
+   group by 1, 2, 3;
 $$;
 
 grant execute on function public.actividad_semana(text,timestamptz,timestamptz) to authenticated;
