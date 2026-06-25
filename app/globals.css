@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-zodiak: "Zodiak", Georgia, serif;
+  --brand-blue: #0099f2;
+  --brand-dark: #00557f;
+  --brand-sand: #e8e3df;
+  --brand-gold: #c8a164;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-[#f6f8fb] text-slate-800;
+    font-feature-settings: "ss01";
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-zodiak);
+  }
+}
+
+@layer components {
+  .kpi-card {
+    @apply rounded-2xl bg-white p-5 shadow-card border border-slate-100;
+  }
+  .panel {
+    @apply rounded-2xl bg-white shadow-card border border-slate-100;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-dark px-4 py-2.5
+           text-sm font-medium text-white transition hover:bg-snorkel-600
+           focus:outline-none focus:ring-2 focus:ring-brand-blue/40 disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm
+           font-medium text-slate-600 transition hover:bg-slate-100;
+  }
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm
+           outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20;
+  }
+}
+
+/* Scrollbar sutil */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cfd8e3; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #b6c2d1; }
