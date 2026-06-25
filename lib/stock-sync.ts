@@ -27,6 +27,33 @@ function fuenteMetal(src: string | null): string {
 const eur = (v: any) => (v == null ? null : Number(v) / 100);
 const gr = (v: any) => (v == null ? null : Number(v) / 1000);
 
+async function contarNoVen(): Promise<number> {
+  const base = process.env.METABASE_URL!;
+  const key = process.env.METABASE_API_KEY!;
+  const field = (n: string, t = "type/Text") => ["field", n, { "base-type": t }];
+  const query = {
+    database: DB_ID,
+    type: "query",
+    query: {
+      "source-table": `card__${CARD_STOCK}`,
+      aggregation: [["count"]],
+      filter: ["!=", field("status"), "VEN"],
+    },
+  };
+  try {
+    const res = await fetch(`${base}/api/dataset`, {
+      method: "POST",
+      headers: { "x-api-key": key, "Content-Type": "application/json" },
+      body: JSON.stringify(query),
+      cache: "no-store",
+    });
+    const j = await res.json();
+    return Number(j?.data?.rows?.[0]?.[0] ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 async function fetchPagina(cursor: string | null) {
   const base = process.env.METABASE_URL!;
   const key = process.env.METABASE_API_KEY!;
@@ -76,9 +103,14 @@ export interface StockSyncResult {
  * Sincroniza el inventario (todos los estados excepto VEN) desde Metabase a Supabase,
  * paginando por cursor de id, y crea el snapshot mensual de valoración.
  */
-export async function sincronizarStock(triggeredBy: string): Promise<StockSyncResult> {
+export async function sincronizarStock(
+  triggeredBy: string,
+  onProgress?: (p: { fase: string; actual: number; total: number; etiqueta: string }) => void
+): Promise<StockSyncResult> {
   const admin = createAdminClient();
   const runStart = new Date().toISOString();
+  const totalEstimado = await contarNoVen();
+  onProgress?.({ fase: "stock", actual: 0, total: totalEstimado || 1, etiqueta: "Calculando inventario…" });
   const { data: logRow } = await admin
     .from("sync_log")
     .insert({ triggered_by: `${triggeredBy} (stock)`, status: "running" })
@@ -127,8 +159,16 @@ export async function sincronizarStock(triggeredBy: string): Promise<StockSyncRe
 
       total += canon.length;
       cursor = rows[rows.length - 1][idx.id];
+      onProgress?.({
+        fase: "stock",
+        actual: total,
+        total: Math.max(totalEstimado, total),
+        etiqueta: `Inventario · ${total.toLocaleString("es-ES")} piezas`,
+      });
       if (rows.length < PAGE) break;
     }
+
+    onProgress?.({ fase: "stock", actual: total, total: Math.max(totalEstimado, total), etiqueta: "Guardando snapshot…" });
 
     // Elimina piezas que ya no existen / pasaron a VEN
     await admin.from("stock").delete().lt("synced_at", runStart);

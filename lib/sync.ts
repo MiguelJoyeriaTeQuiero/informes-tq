@@ -11,8 +11,18 @@ export interface SyncResult {
   total: number;
 }
 
+export interface SyncProgress {
+  fase: string;
+  actual: number;
+  total: number;
+  etiqueta: string;
+}
+
 /** Sincroniza los 5 cards de Metabase → Supabase (upsert idempotente por row_hash). */
-export async function sincronizarTodo(triggeredBy: string): Promise<SyncResult> {
+export async function sincronizarTodo(
+  triggeredBy: string,
+  onProgress?: (p: SyncProgress) => void
+): Promise<SyncResult> {
   const admin = createAdminClient();
   const { data: logRow } = await admin
     .from("sync_log")
@@ -24,14 +34,22 @@ export async function sincronizarTodo(triggeredBy: string): Promise<SyncResult> 
   const porTabla: SyncResult["porTabla"] = {};
   let total = 0;
   let huboError = false;
+  const totalOps = OPERACION_LIST.length;
 
-  for (const op of OPERACION_LIST) {
+  for (let i = 0; i < totalOps; i++) {
+    const op = OPERACION_LIST[i];
+    onProgress?.({
+      fase: "operaciones",
+      actual: i,
+      total: totalOps,
+      etiqueta: `Sincronizando ${op.label}…`,
+    });
     try {
       const filas = await fetchCardData(op.cardId);
       const canon = filas.map((f) => buildRow(op.key as OperacionKey, f, "metabase"));
       let escritas = 0;
-      for (let i = 0; i < canon.length; i += BATCH) {
-        const chunk = canon.slice(i, i + BATCH);
+      for (let j = 0; j < canon.length; j += BATCH) {
+        const chunk = canon.slice(j, j + BATCH);
         const { error } = await admin
           .from(op.key)
           .upsert(chunk, { onConflict: "row_hash", ignoreDuplicates: false });
@@ -45,6 +63,8 @@ export async function sincronizarTodo(triggeredBy: string): Promise<SyncResult> 
       porTabla[op.key] = { origen: 0, escritas: 0, error: (e as Error).message };
     }
   }
+
+  onProgress?.({ fase: "operaciones", actual: totalOps, total: totalOps, etiqueta: "Completado" });
 
   if (logId) {
     await admin
