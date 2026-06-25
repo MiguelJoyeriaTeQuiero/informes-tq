@@ -46,7 +46,17 @@ export async function sincronizarTodo(
     });
     try {
       const filas = await fetchCardData(op.cardId);
-      const canon = filas.map((f) => buildRow(op.key as OperacionKey, f, "metabase"));
+      // Dedup por row_hash: dos líneas idénticas darían el mismo hash y Postgres
+      // no permite actualizar la misma fila dos veces en un solo upsert.
+      const vistos = new Set<string>();
+      const canon = filas
+        .map((f) => buildRow(op.key as OperacionKey, f, "metabase"))
+        .filter((r) => {
+          const h = r.row_hash as string;
+          if (vistos.has(h)) return false;
+          vistos.add(h);
+          return true;
+        });
       let escritas = 0;
       for (let j = 0; j < canon.length; j += BATCH) {
         const chunk = canon.slice(j, j + BATCH);
