@@ -200,9 +200,14 @@ export default async function DetallePage({
           variacion={fmtVariacion(Number(ky?.euros ?? 0), Number(kyp?.euros ?? 0))}
           icon={<TrendingUp className="h-5 w-5" />} sub={`vs ${anio - 1} a misma fecha`} />
         <KpiCard label="Operaciones YTD" valor={fmtNum(Number(ky?.unidades ?? 0))}
-          variacion={fmtVariacion(Number(ky?.unidades ?? 0), Number(kyp?.unidades ?? 0))} />
-        <KpiCard label="Oro YTD" valor={fmtGramos(Number(ky?.gramos_oro ?? 0))} />
-        <KpiCard label="Plata YTD" valor={fmtGramos(Number(ky?.gramos_plata ?? 0))} />
+          variacion={fmtVariacion(Number(ky?.unidades ?? 0), Number(kyp?.unidades ?? 0))}
+          sub={`vs ${anio - 1} a misma fecha`} />
+        <KpiCard label="Oro YTD" valor={fmtGramos(Number(ky?.gramos_oro ?? 0))}
+          variacion={fmtVariacion(Number(ky?.gramos_oro ?? 0), Number(kyp?.gramos_oro ?? 0))}
+          sub={`vs ${anio - 1} a misma fecha`} />
+        <KpiCard label="Plata YTD" valor={fmtGramos(Number(ky?.gramos_plata ?? 0))}
+          variacion={fmtVariacion(Number(ky?.gramos_plata ?? 0), Number(kyp?.gramos_plata ?? 0))}
+          sub={`vs ${anio - 1} a misma fecha`} />
       </div>
 
       {/* Coste vs mercado (solo compras) */}
