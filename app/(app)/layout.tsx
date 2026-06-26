@@ -16,8 +16,13 @@ export default async function AppLayout({
     <div className="flex min-h-screen">
       <Sidebar permisos={{ config: puede(profile, "config") }} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar metals={<MetalsWidget />} profile={profile} email={user.email} />
-        <main className="flex-1 p-6">{children}</main>
+        <Topbar
+          metals={<MetalsWidget />}
+          profile={profile}
+          email={user.email}
+          permisos={{ config: puede(profile, "config") }}
+        />
+        <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );
