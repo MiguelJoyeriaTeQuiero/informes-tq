@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSessionProfile, puede } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SyncPanel } from "@/components/config/sync-panel";
+import { MetabaseCardsPanel } from "@/components/config/metabase-cards-panel";
 import { UsersPanel } from "@/components/config/users-panel";
 import { RolesPanel } from "@/components/config/roles-panel";
 import type { Profile } from "@/lib/types";
@@ -22,6 +23,7 @@ export default async function ConfiguracionPage() {
   return (
     <div className="space-y-6">
       <SyncPanel ultima={logs?.[0] ?? null} />
+      <MetabaseCardsPanel metabaseUrl={process.env.METABASE_URL ?? ""} />
       <UsersPanel
         usuarios={(usuarios as Profile[]) ?? []}
         roles={roles ?? []}
