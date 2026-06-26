@@ -60,11 +60,23 @@ const MAPEOS: Record<OperacionKey, FieldMap> = {
     cliente_ciudad: ["Customers__city"],
     cliente_provincia: ["Customers__province"],
     cliente_cp: ["Customers__postal_code"],
+    cliente_email_notif: ["Customers__email_notifications"],
+    cliente_sms_notif: ["Customers__sms_notifications"],
   },
 };
 
 const NUMERICOS = new Set(["peso_g", "pago_eur", "descuento_eur"]);
 const FECHAS = new Set(["fecha_operacion"]);
+const BOOLEANOS = new Set(["cliente_email_notif", "cliente_sms_notif"]);
+
+function toBool(v: unknown): boolean | null {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "boolean") return v;
+  const s = String(v).trim().toLowerCase();
+  if (["true", "t", "1", "sí", "si", "yes"].includes(s)) return true;
+  if (["false", "f", "0", "no"].includes(s)) return false;
+  return null;
+}
 
 const EXCEL_EPOCH_DIFF = 25569; // días entre 1899-12-30 y 1970-01-01
 
@@ -107,6 +119,7 @@ export function buildRow(
     const raw = pick(src, candidates);
     if (FECHAS.has(field)) out[field] = toDate(raw);
     else if (NUMERICOS.has(field)) out[field] = toNumber(raw);
+    else if (BOOLEANOS.has(field)) out[field] = toBool(raw);
     else out[field] = raw === undefined || raw === "" ? null : String(raw).trim();
   }
 

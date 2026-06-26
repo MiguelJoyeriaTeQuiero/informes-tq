@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, ShoppingBag, ShoppingCart, CalendarClock, RefreshCcw,
-  Wrench, Boxes, Presentation, Settings, Truck, LineChart, Target,
+  Wrench, Boxes, Presentation, Settings, Truck, LineChart, Target, Users,
 } from "lucide-react";
 
 type NavItem =
@@ -16,6 +16,7 @@ export const NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/finanzas", label: "Finanzas y rentabilidad", icon: LineChart },
   { href: "/objetivos", label: "Objetivos", icon: Target },
+  { href: "/clientes", label: "Clientes", icon: Users },
   { tipo: "sep", label: "Operaciones" },
   { href: "/ventas", label: "Ventas", icon: ShoppingBag },
   { href: "/compras", label: "Compras", icon: ShoppingCart },

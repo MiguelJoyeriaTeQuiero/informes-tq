@@ -9,6 +9,7 @@ const TITULOS: Record<string, string> = {
   "/": "Dashboard general",
   "/finanzas": "Finanzas y rentabilidad",
   "/objetivos": "Objetivos",
+  "/clientes": "Analítica de clientes",
   "/ventas": "Ventas",
   "/compras": "Compras",
   "/reservas": "Reservas",
