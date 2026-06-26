@@ -10,7 +10,8 @@ import {
 import { OPERACION_LIST, type OperacionKey } from "@/lib/types";
 import { fmtEur, fmtGramos, fmtNum, fmtVariacion, MESES } from "@/lib/format";
 import { KpiCard } from "@/components/kpi-card";
-import { AreaTendencia, BarrasRanking } from "@/components/charts";
+import { AreaTendencia, BarrasRanking, LineComparativa, PALETA } from "@/components/charts";
+import { preverVentas } from "@/lib/forecast";
 import { PeriodSelector } from "@/components/period-selector";
 import { YearComparator } from "@/components/year-comparator";
 import { EmptyState } from "@/components/empty-state";
@@ -68,11 +69,12 @@ export default async function DashboardPage({
   // 12 meses hacia atrás para la tendencia
   const desde12 = new Date(Date.UTC(anio, mes - 11, 1)).toISOString();
 
-  const [kpis, kpisPrev, serie, rankingTiendas] = await Promise.all([
+  const [kpis, kpisPrev, serie, rankingTiendas, ventasSerie] = await Promise.all([
     getKpis(desde, hasta),
     getKpis(prev.desde, prev.hasta),
     getSerieMensual("todas", desde12, hasta),
     getRanking("ventas", "tienda", desde, hasta, 8),
+    getSerieMensual("ventas", rango.min ?? desde12, hasta),
   ]);
 
   const m = mapKpis(kpis);
@@ -85,6 +87,23 @@ export default async function DashboardPage({
   const oroTotal = kpis.reduce((s, r) => s + Number(r.gramos_oro), 0);
   const plataTotal = kpis.reduce((s, r) => s + Number(r.gramos_plata), 0);
   const operacionesTotal = kpis.reduce((s, r) => s + Number(r.unidades), 0);
+
+  // Previsión de ventas (6 meses)
+  const prevision = preverVentas(
+    ventasSerie.map((s) => ({ mes: s.mes, euros: Number(s.euros) })),
+    6
+  );
+  const etq = (d: Date) => `${MESES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`;
+  const ultReales = ventasSerie.slice(-12);
+  const forecastData = [
+    ...ultReales.map((s, i) => ({
+      mes: etq(new Date(s.mes)),
+      Real: Number(s.euros),
+      Previsión: i === ultReales.length - 1 ? Number(s.euros) : null,
+    })),
+    ...prevision.map((p) => ({ mes: etq(p.mes), Real: null as number | null, Previsión: p.euros })),
+  ];
+  const totalPrevision = prevision.reduce((s, p) => s + p.euros, 0);
 
   const serieFmt = serie.map((s) => {
     const d = new Date(s.mes);
@@ -191,6 +210,25 @@ export default async function DashboardPage({
             <p className="py-8 text-center text-sm text-slate-400">Sin datos</p>
           )}
         </div>
+      </div>
+
+      {/* Previsión de ventas */}
+      <div className="panel p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-display text-lg text-slate-800">Previsión de ventas</h2>
+            <p className="text-xs text-slate-400">Proyección de los próximos 6 meses (estacionalidad + tendencia)</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Previsión 6 meses</p>
+            <p className="font-display text-xl text-brand-dark">{fmtEur(totalPrevision)}</p>
+          </div>
+        </div>
+        <LineComparativa
+          data={forecastData}
+          series={[{ key: "Real", color: PALETA[0] }, { key: "Previsión", color: PALETA[2] }]}
+          formato="euro"
+        />
       </div>
 
       {/* Comparador de años */}

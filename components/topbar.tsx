@@ -8,6 +8,7 @@ import type { Profile } from "@/lib/types";
 const TITULOS: Record<string, string> = {
   "/": "Dashboard general",
   "/finanzas": "Finanzas y rentabilidad",
+  "/objetivos": "Objetivos",
   "/ventas": "Ventas",
   "/compras": "Compras",
   "/reservas": "Reservas",
