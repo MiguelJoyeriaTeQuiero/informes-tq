@@ -15,7 +15,8 @@ export async function POST() {
       const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
       try {
         const res = await sincronizarRentabilidad(user.email ?? "manual", (p) => send({ type: "progress", ...p }));
-        send({ type: "done", result: { total: res.filas, porTabla: { rentabilidad: { escritas: res.filas } } } });
+        if (!res.ok) send({ type: "error", error: res.error || "Error en la sincronización" });
+        else send({ type: "done", result: { total: res.filas, porTabla: { rentabilidad: { escritas: res.filas } } } });
       } catch (e) {
         send({ type: "error", error: (e as Error).message });
       } finally {

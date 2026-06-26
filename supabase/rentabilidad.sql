@@ -4,8 +4,12 @@
 --  Ejecutar DESPUÉS de schema.sql
 -- ============================================================
 
+-- Se recrea: el id de producto puede repetirse (venta + devolución), así que
+-- usamos una clave primaria propia y recarga completa en cada sync.
+drop table if exists public.ventas_rentabilidad;
 create table if not exists public.ventas_rentabilidad (
-  id              uuid primary key,
+  pk              bigint generated always as identity primary key,
+  id_producto     uuid,
   fecha           timestamptz,
   codigo_venta    text,
   codigo_producto text,

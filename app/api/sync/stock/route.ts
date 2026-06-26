@@ -19,7 +19,8 @@ export async function POST() {
         const res = await sincronizarStock(user.email ?? "manual", (p) =>
           send({ type: "progress", ...p })
         );
-        send({ type: "done", result: res });
+        if (!res.ok) send({ type: "error", error: res.error || "Error en la sincronización" });
+        else send({ type: "done", result: res });
       } catch (e) {
         send({ type: "error", error: (e as Error).message });
       } finally {

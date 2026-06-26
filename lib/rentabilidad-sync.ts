@@ -18,18 +18,14 @@ async function cargarQuery() {
   return c.dataset_query;
 }
 
-async function fetchPagina(baseQuery: any, cursor: string | null) {
+async function fetchPagina(baseQuery: any, page: number) {
   const base = process.env.METABASE_URL!;
   const key = process.env.METABASE_API_KEY!;
   const ID = ["field", "id", { "base-type": "type/UUID" }];
   const q = JSON.parse(JSON.stringify(baseQuery));
   delete q.query.limit;
   q.query["order-by"] = [["asc", ID]];
-  q.query.limit = PAGE;
-  if (cursor) {
-    const cur = [">", ID, cursor];
-    q.query.filter = q.query.filter ? ["and", q.query.filter, cur] : cur;
-  }
+  q.query.page = { page, items: PAGE };
   const res = await fetch(`${base}/api/dataset`, {
     method: "POST",
     headers: { "x-api-key": key, "Content-Type": "application/json" },
@@ -50,26 +46,26 @@ export async function sincronizarRentabilidad(
   onProgress?: (p: { fase: string; actual: number; total: number; etiqueta: string }) => void
 ): Promise<RentSyncResult> {
   const admin = createAdminClient();
-  const runStart = new Date().toISOString();
   const { data: logRow } = await admin
     .from("sync_log")
     .insert({ triggered_by: `${triggeredBy} (rentabilidad)`, status: "running" })
     .select("id").single();
   const logId = logRow?.id;
 
-  let cursor: string | null = null;
   let total = 0;
   let paginas = 0;
 
   try {
     const baseQuery = await cargarQuery();
+    // Recarga completa: vaciar la tabla antes de insertar
+    await admin.from("ventas_rentabilidad").delete().gte("pk", 0);
     onProgress?.({ fase: "rentabilidad", actual: 0, total: 1, etiqueta: "Productos vendidos…" });
-    for (;;) {
-      const { rows, idx } = await fetchPagina(baseQuery, cursor);
+    for (let page = 1; ; page++) {
+      const { rows, idx } = await fetchPagina(baseQuery, page);
       if (!rows.length) break;
       paginas++;
       const canon = rows.map((r) => ({
-        id: r[idx["ID"] ?? idx["id"]],
+        id_producto: r[idx["ID"] ?? idx["id"]],
         fecha: r[idx["Fecha de la venta"]] || null,
         codigo_venta: r[idx["Código de la venta"]],
         codigo_producto: r[idx["Código del producto vendido"]],
@@ -90,16 +86,13 @@ export async function sincronizarRentabilidad(
         igic_pct: n(r[idx["IGIC"]]),
         descuento: n(r[idx["Descuento Aplicado"]]),
         cliente: r[idx["customer_full_name"]] ?? null,
-        synced_at: runStart,
       }));
-      const { error } = await admin.from("ventas_rentabilidad").upsert(canon, { onConflict: "id" });
+      const { error } = await admin.from("ventas_rentabilidad").insert(canon);
       if (error) throw new Error(error.message);
       total += canon.length;
-      cursor = rows[rows.length - 1][idx["ID"] ?? idx["id"]];
       onProgress?.({ fase: "rentabilidad", actual: total, total: Math.max(total, total + 1), etiqueta: `Rentabilidad · ${total.toLocaleString("es-ES")} líneas` });
       if (rows.length < PAGE) break;
     }
-    await admin.from("ventas_rentabilidad").delete().lt("synced_at", runStart);
 
     if (logId) await admin.from("sync_log").update({ finished_at: new Date().toISOString(), status: "ok", rows_total: total, detail: { paginas } }).eq("id", logId);
     return { ok: true, filas: total, paginas };

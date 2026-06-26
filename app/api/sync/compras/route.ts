@@ -16,6 +16,7 @@ export async function POST() {
       try {
         const res = await sincronizarCompras(user.email ?? "manual", (p) => send({ type: "progress", ...p }));
         send({ type: "done", result: { total: res.total, porTabla: res.porReporte } });
+        // (los errores por informe se muestran en el detalle porTabla)
       } catch (e) {
         send({ type: "error", error: (e as Error).message });
       } finally {
