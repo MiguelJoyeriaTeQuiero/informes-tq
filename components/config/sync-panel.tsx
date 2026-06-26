@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Loader2, CheckCircle2, AlertCircle, Boxes, Truck } from "lucide-react";
+import { RefreshCw, Loader2, CheckCircle2, AlertCircle, Boxes, Truck, TrendingUp } from "lucide-react";
 
-type Corriendo = "ops" | "stock" | "compras" | null;
+type Corriendo = "ops" | "stock" | "compras" | "rentabilidad" | null;
 
 export function SyncPanel({ ultima }: { ultima: any | null }) {
   const router = useRouter();
@@ -14,7 +14,7 @@ export function SyncPanel({ ultima }: { ultima: any | null }) {
   const [res, setRes] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function ejecutar(tipo: "ops" | "stock" | "compras", url: string) {
+  async function ejecutar(tipo: "ops" | "stock" | "compras" | "rentabilidad", url: string) {
     setCorriendo(tipo);
     setError(null);
     setRes(null);
@@ -99,6 +99,10 @@ export function SyncPanel({ ultima }: { ultima: any | null }) {
           <button onClick={() => ejecutar("compras", "/api/sync/compras")} disabled={ocupado} className="btn-ghost border border-slate-200">
             {corriendo === "compras" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
             Sincronizar Compras
+          </button>
+          <button onClick={() => ejecutar("rentabilidad", "/api/sync/rentabilidad")} disabled={ocupado} className="btn-ghost border border-slate-200">
+            {corriendo === "rentabilidad" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
+            Sincronizar Rentabilidad
           </button>
         </div>
       </div>
