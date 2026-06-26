@@ -14,16 +14,19 @@ export default async function ConfiguracionPage() {
   if (!puede(profile, "config")) redirect("/");
 
   const sb = await createClient();
-  const [{ data: usuarios }, { data: roles }, { data: logs }] = await Promise.all([
+  const { getFuentes } = await import("@/lib/sources");
+  const [{ data: usuarios }, { data: roles }, { data: logs }, fuentes] = await Promise.all([
     sb.from("profiles").select("*").order("created_at", { ascending: true }),
     sb.from("roles").select("name,label").order("name"),
     sb.from("sync_log").select("*").order("started_at", { ascending: false }).limit(1),
+    getFuentes(),
   ]);
 
   return (
     <div className="space-y-6">
       <SyncPanel ultima={logs?.[0] ?? null} />
-      <MetabaseCardsPanel metabaseUrl={process.env.METABASE_URL ?? ""} />
+      <MetabaseCardsPanel fuentes={fuentes} metabaseUrl={process.env.METABASE_URL ?? ""} editable />
+
       <UsersPanel
         usuarios={(usuarios as Profile[]) ?? []}
         roles={roles ?? []}

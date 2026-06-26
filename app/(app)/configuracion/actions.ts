@@ -68,6 +68,26 @@ export async function eliminarUsuario(userId: string) {
   }
 }
 
+export async function actualizarFuente(
+  key: string,
+  cambios: { card_id?: number; metabase_nombre?: string; activo?: boolean }
+) {
+  try {
+    await exigirAdmin();
+    const admin = createAdminClient();
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (cambios.card_id != null && Number.isFinite(cambios.card_id)) patch.card_id = cambios.card_id;
+    if (cambios.metabase_nombre != null) patch.metabase_nombre = cambios.metabase_nombre;
+    if (cambios.activo != null) patch.activo = cambios.activo;
+    const { error } = await admin.from("metabase_sources").update(patch).eq("key", key);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/configuracion");
+    return { ok: true, error: null };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 export async function crearRol(_prev: unknown, formData: FormData) {
   try {
     await exigirAdmin();

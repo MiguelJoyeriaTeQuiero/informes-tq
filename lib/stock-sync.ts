@@ -1,6 +1,7 @@
 import { createAdminClient } from "./supabase/admin";
+import { getFuentes } from "./sources";
 
-const CARD_STOCK = 353;
+const CARD_STOCK_DEFAULT = 353;
 const DB_ID = 3;
 const PAGE = 2000;
 
@@ -27,7 +28,7 @@ function fuenteMetal(src: string | null): string {
 const eur = (v: any) => (v == null ? null : Number(v) / 100);
 const gr = (v: any) => (v == null ? null : Number(v) / 1000);
 
-async function contarNoVen(): Promise<number> {
+async function contarNoVen(cardId: number): Promise<number> {
   const base = process.env.METABASE_URL!;
   const key = process.env.METABASE_API_KEY!;
   const field = (n: string, t = "type/Text") => ["field", n, { "base-type": t }];
@@ -35,7 +36,7 @@ async function contarNoVen(): Promise<number> {
     database: DB_ID,
     type: "query",
     query: {
-      "source-table": `card__${CARD_STOCK}`,
+      "source-table": `card__${cardId}`,
       aggregation: [["count"]],
       filter: ["!=", field("status"), "VEN"],
     },
@@ -54,7 +55,7 @@ async function contarNoVen(): Promise<number> {
   }
 }
 
-async function fetchPagina(cursor: string | null) {
+async function fetchPagina(cardId: number, cursor: string | null) {
   const base = process.env.METABASE_URL!;
   const key = process.env.METABASE_API_KEY!;
   const field = (n: string, t = "type/Text") => ["field", n, { "base-type": t }];
@@ -67,7 +68,7 @@ async function fetchPagina(cursor: string | null) {
     database: DB_ID,
     type: "query",
     query: {
-      "source-table": `card__${CARD_STOCK}`,
+      "source-table": `card__${cardId}`,
       fields: CAMPOS.map((c) =>
         c === "id" ? field("id", "type/UUID") : field(c)
       ),
@@ -109,7 +110,9 @@ export async function sincronizarStock(
 ): Promise<StockSyncResult> {
   const admin = createAdminClient();
   const runStart = new Date().toISOString();
-  const totalEstimado = await contarNoVen();
+  const fuenteStock = (await getFuentes()).find((f) => f.tipo === "stock" && f.activo);
+  const cardId = fuenteStock?.card_id ?? CARD_STOCK_DEFAULT;
+  const totalEstimado = await contarNoVen(cardId);
   onProgress?.({ fase: "stock", actual: 0, total: totalEstimado || 1, etiqueta: "Calculando inventario…" });
   const { data: logRow } = await admin
     .from("sync_log")
@@ -125,7 +128,7 @@ export async function sincronizarStock(
   try {
     for (;;) {
       const { rows, idx }: { rows: any[][]; idx: Record<string, number> } =
-        await fetchPagina(cursor);
+        await fetchPagina(cardId, cursor);
       if (!rows.length) break;
       paginas++;
 

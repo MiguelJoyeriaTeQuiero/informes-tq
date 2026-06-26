@@ -1,7 +1,8 @@
 import { fetchCardData } from "./metabase";
 import { buildRow } from "./transform";
 import { createAdminClient } from "./supabase/admin";
-import { OPERACION_LIST, type OperacionKey } from "./types";
+import { getFuentes } from "./sources";
+import { OPERACIONES, type OperacionKey } from "./types";
 
 const BATCH = 1000;
 
@@ -34,10 +35,15 @@ export async function sincronizarTodo(
   const porTabla: SyncResult["porTabla"] = {};
   let total = 0;
   let huboError = false;
-  const totalOps = OPERACION_LIST.length;
+
+  // Fuentes activas de tipo operación, leídas desde BD (editables en Configuración)
+  const fuentes = (await getFuentes()).filter(
+    (f) => f.tipo === "operacion" && f.activo && f.key in OPERACIONES
+  );
+  const totalOps = fuentes.length;
 
   for (let i = 0; i < totalOps; i++) {
-    const op = OPERACION_LIST[i];
+    const op = fuentes[i];
     onProgress?.({
       fase: "operaciones",
       actual: i,
@@ -45,7 +51,7 @@ export async function sincronizarTodo(
       etiqueta: `Sincronizando ${op.label}…`,
     });
     try {
-      const filas = await fetchCardData(op.cardId);
+      const filas = await fetchCardData(op.card_id);
       // Dedup por row_hash: dos líneas idénticas darían el mismo hash y Postgres
       // no permite actualizar la misma fila dos veces en un solo upsert.
       const vistos = new Set<string>();
