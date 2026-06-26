@@ -13,6 +13,7 @@ const TITULOS: Record<string, string> = {
   "/recuperables": "Ventas Recuperables",
   "/trabajos": "Trabajos",
   "/inventario": "Inventario y existencias",
+  "/aprovisionamiento": "Departamento de Compras",
   "/presentaciones": "Generador de presentaciones",
   "/configuracion": "Configuración",
 };
