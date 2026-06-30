@@ -20,6 +20,7 @@ async function precioUsdOnza(symbol: "XAU" | "XAG"): Promise<number | null> {
   try {
     const r = await fetch(`https://api.gold-api.com/price/${symbol}`, {
       next: { revalidate: 1800 },
+      signal: AbortSignal.timeout(3000),
     });
     if (!r.ok) return null;
     const j = (await r.json()) as { price?: number };
@@ -33,6 +34,7 @@ async function tasaUsdEur(): Promise<number> {
   try {
     const r = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR", {
       next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(3000),
     });
     if (r.ok) {
       const j = (await r.json()) as { rates?: { EUR?: number } };

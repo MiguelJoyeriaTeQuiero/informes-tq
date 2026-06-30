@@ -1,4 +1,6 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "./supabase/server";
+import { createAdminClient } from "./supabase/admin";
 import type { OperacionKey } from "./types";
 
 export interface KpiRow {
@@ -24,11 +26,18 @@ export interface RankingRow {
   unidades: number;
 }
 
-export async function getTiendas(): Promise<string[]> {
-  const sb = await createClient();
-  const { data } = await sb.rpc("tiendas");
-  return (data ?? []).map((r: any) => r.tienda as string);
-}
+// La lista de tiendas cambia poco → se cachea 1h (usa service role, sin cookies)
+export const getTiendas = unstable_cache(
+  async (): Promise<string[]> => {
+    const admin = createAdminClient();
+    const { data } = await admin.rpc("tiendas");
+    return (data ?? [])
+      .map((r: any) => r.tienda as string)
+      .filter((t: string) => t && t.toLowerCase() !== "null");
+  },
+  ["lista-tiendas"],
+  { revalidate: 3600 }
+);
 
 export async function getKpis(desde: string, hasta: string, tienda?: string | null): Promise<KpiRow[]> {
   const sb = await createClient();
@@ -160,6 +169,43 @@ export async function getDesgloseAnalitico(
       variacion: prev ? (euros - prev) / Math.abs(prev) : null,
     };
   });
+}
+
+/** Todos los desgloses (varias dimensiones) en 2 llamadas: actual + año anterior. */
+export async function getDesglosesMulti(
+  operacion: OperacionKey | "todas",
+  dims: DimAnalitica[],
+  desde: string,
+  hasta: string,
+  prevDesde: string,
+  prevHasta: string,
+  tienda?: string | null
+): Promise<Record<string, FilaAnalitica[]>> {
+  const sb = await createClient();
+  const [{ data: actual }, { data: anterior }] = await Promise.all([
+    sb.rpc("desglose_multi", { p_operacion: operacion, p_dims: dims, desde, hasta, p_tienda: tienda ?? null }),
+    sb.rpc("desglose_multi", { p_operacion: operacion, p_dims: dims, desde: prevDesde, hasta: prevHasta, p_tienda: tienda ?? null }),
+  ]);
+  const prevMap = new Map<string, number>();
+  for (const r of (anterior ?? []) as any[]) prevMap.set(`${r.dim}|${r.etiqueta}`, Number(r.euros));
+  const totByDim: Record<string, number> = {};
+  for (const r of (actual ?? []) as any[]) totByDim[r.dim] = (totByDim[r.dim] || 0) + Math.abs(Number(r.euros));
+
+  const out: Record<string, FilaAnalitica[]> = {};
+  for (const d of dims) out[d] = [];
+  for (const r of (actual ?? []) as any[]) {
+    const euros = Number(r.euros), unidades = Number(r.unidades);
+    const prev = prevMap.get(`${r.dim}|${r.etiqueta}`);
+    const tot = totByDim[r.dim] || 1;
+    (out[r.dim] ||= []).push({
+      etiqueta: r.etiqueta, euros, unidades,
+      ticket: unidades ? euros / unidades : 0,
+      gramosOro: Number(r.gramos_oro), gramosPlata: Number(r.gramos_plata), pesoTotal: Number(r.peso_total),
+      pctEuros: Math.abs(euros) / tot,
+      variacion: prev ? (euros - prev) / Math.abs(prev) : null,
+    });
+  }
+  return out;
 }
 
 export async function getActividadSemana(

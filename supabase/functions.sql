@@ -161,6 +161,32 @@ language sql stable as $$
    group by 1, 2, 3;
 $$;
 
+-- Desglose de VARIAS dimensiones en una sola llamada (reduce ida y vuelta)
+create or replace function public.desglose_multi(p_operacion text, p_dims text[], desde timestamptz, hasta timestamptz, p_tienda text default null)
+returns table(dim text, etiqueta text, euros numeric, unidades bigint, gramos_oro numeric, gramos_plata numeric, peso_total numeric)
+language plpgsql stable as $$
+declare d text;
+begin
+  foreach d in array p_dims loop
+    if d not in ('tienda','empleado','familia_prenda','plataforma','metodo_pago','tipo_operacion','quilate_prenda','origen_metal') then
+      continue;
+    end if;
+    return query execute format($q$
+      select %L::text, coalesce(nullif(trim(%I),''),'(sin dato)'),
+             coalesce(sum(pago_eur),0), count(*),
+             coalesce(sum(peso_g) filter (where public.metal_de(quilate_prenda)='oro'),0),
+             coalesce(sum(peso_g) filter (where public.metal_de(quilate_prenda)='plata'),0),
+             coalesce(sum(peso_g),0)
+        from public.operaciones_unificadas
+       where (%L = 'todas' or operacion = %L)
+         and fecha_operacion >= %L and fecha_operacion < %L
+         and (%L is null or tienda = %L)
+       group by 2 order by abs(sum(pago_eur)) desc nulls last
+    $q$, d, d, p_operacion, p_operacion, desde, hasta, p_tienda, p_tienda);
+  end loop;
+end;
+$$;
+
 -- Lista de tiendas (para el selector)
 create or replace function public.tiendas()
 returns table(tienda text)
@@ -181,6 +207,7 @@ grant execute on function public.serie_mensual(text,timestamptz,timestamptz,text
 grant execute on function public.serie_diaria(text,timestamptz,timestamptz,text) to authenticated;
 grant execute on function public.ranking(text,text,timestamptz,timestamptz,int,text) to authenticated;
 grant execute on function public.desglose(text,text,timestamptz,timestamptz,text) to authenticated;
+grant execute on function public.desglose_multi(text,text[],timestamptz,timestamptz,text) to authenticated;
 grant execute on function public.actividad_semana(text,timestamptz,timestamptz,text) to authenticated;
 grant execute on function public.kpis_extra(text,timestamptz,timestamptz,text) to authenticated;
 grant execute on function public.mapa_calor(text,timestamptz,timestamptz,text) to authenticated;

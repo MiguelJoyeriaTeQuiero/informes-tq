@@ -6,7 +6,7 @@ import {
   getSerieDiaria,
   getActividadSemana,
   getMapaCalor,
-  getDesgloseAnalitico,
+  getDesglosesMulti,
   getRangoFechas,
   getTiendas,
   rangoMes,
@@ -96,7 +96,7 @@ export default async function DetallePage({
   const [
     kpis, kpisPrev, kpisYtd, kpisYtdPrev, extra,
     serieMensual, serieDiaria, actividad, mapaCalor, recientes, conteo,
-    metales, ...desgloses
+    metales, desglosesMap,
   ] = await Promise.all([
     getKpis(desde, hasta, tienda),
     getKpis(prev.desde, prev.hasta, tienda),
@@ -110,7 +110,7 @@ export default async function DetallePage({
     recientesQ.order("fecha_operacion", { ascending: false }).range(0, 2999),
     conteoQ,
     key === "compras" ? getPreciosMetales().catch(() => null) : Promise.resolve(null),
-    ...DIMS.map((d) => getDesgloseAnalitico(key, d.key, desde, hasta, prev.desde, prev.hasta, tienda)),
+    getDesglosesMulti(key, DIMS.map((d) => d.key), desde, hasta, prev.desde, prev.hasta, tienda),
   ]);
 
   const k = kpis.find((r) => r.operacion === key);
@@ -140,7 +140,7 @@ export default async function DetallePage({
     return { dia, euros: Number(r?.euros ?? 0), unidades: Number(r?.unidades ?? 0) };
   });
 
-  const secciones = DIMS.map((d, i) => ({ key: d.key, label: d.label, filas: desgloses[i] }));
+  const secciones = DIMS.map((d) => ({ key: d.key, label: d.label, filas: desglosesMap[d.key] ?? [] }));
 
   // Distribuciones
   const dMetodo = secciones.find((s) => s.key === "metodo_pago")!.filas.map((f) => ({ nombre: f.etiqueta, valor: Math.abs(f.euros) }));
