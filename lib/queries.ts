@@ -17,6 +17,8 @@ export interface SerieRow {
   euros: number;
   gramos: number;
   unidades: number;
+  gramos_oro: number;
+  gramos_plata: number;
 }
 
 export interface RankingRow {
@@ -227,7 +229,7 @@ export async function getMapaCalor(
   desde: string,
   hasta: string,
   tienda?: string | null
-): Promise<{ tienda: string; dow: number; hora: number; euros: number; unidades: number; gramos: number }[]> {
+): Promise<{ tienda: string; dow: number; hora: number; euros: number; unidades: number; gramos: number; gramos_oro: number; gramos_plata: number }[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("mapa_calor", {
     p_operacion: operacion, desde, hasta, p_tienda: tienda ?? null,

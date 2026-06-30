@@ -39,6 +39,7 @@ $$;
 -- Las firmas cambian (añaden p_tienda) → hay que borrar las versiones antiguas
 drop function if exists public.kpis_por_operacion(timestamptz, timestamptz);
 drop function if exists public.serie_mensual(text, timestamptz, timestamptz);
+drop function if exists public.serie_mensual(text, timestamptz, timestamptz, text);
 drop function if exists public.serie_diaria(text, timestamptz, timestamptz);
 drop function if exists public.ranking(text, text, timestamptz, timestamptz, int);
 drop function if exists public.desglose(text, text, timestamptz, timestamptz);
@@ -63,9 +64,11 @@ language sql stable as $$
 $$;
 
 create or replace function public.serie_mensual(p_operacion text, desde timestamptz, hasta timestamptz, p_tienda text default null)
-returns table(mes date, euros numeric, gramos numeric, unidades bigint)
+returns table(mes date, euros numeric, gramos numeric, unidades bigint, gramos_oro numeric, gramos_plata numeric)
 language sql stable as $$
-  select date_trunc('month', fecha_operacion)::date, coalesce(sum(pago_eur),0), coalesce(sum(peso_g),0), count(*)
+  select date_trunc('month', fecha_operacion)::date, coalesce(sum(pago_eur),0), coalesce(sum(peso_g),0), count(*),
+         coalesce(sum(peso_g) filter (where public.metal_de(quilate_prenda)='oro'),0),
+         coalesce(sum(peso_g) filter (where public.metal_de(quilate_prenda)='plata'),0)
     from public.operaciones_unificadas
    where (p_operacion = 'todas' or operacion = p_operacion)
      and fecha_operacion >= desde and fecha_operacion < hasta
@@ -151,12 +154,14 @@ language sql stable as $$
 $$;
 
 create or replace function public.mapa_calor(p_operacion text, desde timestamptz, hasta timestamptz, p_tienda text default null)
-returns table(tienda text, dow int, hora int, euros numeric, unidades bigint, gramos numeric)
+returns table(tienda text, dow int, hora int, euros numeric, unidades bigint, gramos numeric, gramos_oro numeric, gramos_plata numeric)
 language sql stable as $$
   select coalesce(nullif(trim(tienda), ''), '(sin dato)'),
          extract(dow  from (fecha_operacion at time zone 'Atlantic/Canary'))::int,
          extract(hour from (fecha_operacion at time zone 'Atlantic/Canary'))::int,
-         coalesce(sum(pago_eur),0), count(*), coalesce(sum(peso_g),0)
+         coalesce(sum(pago_eur),0), count(*), coalesce(sum(peso_g),0),
+         coalesce(sum(peso_g) filter (where public.metal_de(quilate_prenda)='oro'),0),
+         coalesce(sum(peso_g) filter (where public.metal_de(quilate_prenda)='plata'),0)
     from public.operaciones_unificadas
    where (p_operacion = 'todas' or operacion = p_operacion)
      and fecha_operacion >= desde and fecha_operacion < hasta

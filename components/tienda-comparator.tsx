@@ -6,10 +6,10 @@ import { LineComparativa, PALETA } from "./charts";
 import { fmtEur, fmtGramos, fmtNum } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-type Metrica = "euros" | "unidades" | "gramos";
+type Metrica = "euros" | "unidades" | "oro" | "plata" | "ambos";
 interface TiendaSerie {
-  tienda: string; euros: number[]; gramos: number[]; unidades: number[];
-  total: { euros: number; gramos: number; unidades: number };
+  tienda: string; euros: number[]; unidades: number[]; oro: number[]; plata: number[]; ambos: number[];
+  total: { euros: number; unidades: number; oro: number; plata: number; ambos: number };
 }
 
 export function TiendaComparator({ operacion, tiendas }: { operacion: string; tiendas: string[] }) {
@@ -38,7 +38,7 @@ export function TiendaComparator({ operacion, tiendas }: { operacion: string; ti
     for (const t of datos.tiendas) fila[t.tienda] = (t as any)[metrica][mi] ?? 0;
     return fila;
   });
-  const fmt = metrica === "euros" ? fmtEur : metrica === "gramos" ? fmtGramos : fmtNum;
+  const fmt = metrica === "euros" ? fmtEur : metrica === "unidades" ? fmtNum : fmtGramos;
 
   return (
     <div className="panel p-5">
@@ -48,7 +48,7 @@ export function TiendaComparator({ operacion, tiendas }: { operacion: string; ti
           <p className="text-xs text-slate-400">Evolución mensual superpuesta (12 meses) · máx. 8 tiendas</p>
         </div>
         <div className="flex rounded-xl bg-slate-100 p-1">
-          {([["euros", "Importe €"], ["unidades", "Operaciones"], ["gramos", "Gramos"]] as [Metrica, string][]).map(([m, l]) => (
+          {([["euros", "Importe €"], ["unidades", "Operaciones"], ["oro", "Oro (g)"], ["plata", "Plata (g)"], ["ambos", "Ambos (g)"]] as [Metrica, string][]).map(([m, l]) => (
             <button key={m} onClick={() => setMetrica(m)}
               className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition", metrica === m ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
               {l}
@@ -85,7 +85,8 @@ export function TiendaComparator({ operacion, tiendas }: { operacion: string; ti
                   <th className="px-4 py-3 font-medium">Tienda</th>
                   <th className="px-4 py-3 text-right font-medium">Importe (12m)</th>
                   <th className="px-4 py-3 text-right font-medium">Operaciones</th>
-                  <th className="px-4 py-3 text-right font-medium">Gramos</th>
+                  <th className="px-4 py-3 text-right font-medium">Oro</th>
+                  <th className="px-4 py-3 text-right font-medium">Plata</th>
                 </tr>
               </thead>
               <tbody>
@@ -97,7 +98,8 @@ export function TiendaComparator({ operacion, tiendas }: { operacion: string; ti
                     </td>
                     <td className="px-4 py-2.5 text-right font-medium text-slate-800">{fmtEur(t.total.euros)}</td>
                     <td className="px-4 py-2.5 text-right text-slate-500">{fmtNum(t.total.unidades)}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-500">{fmtGramos(t.total.gramos)}</td>
+                    <td className="px-4 py-2.5 text-right text-slate-500">{fmtGramos(t.total.oro)}</td>
+                    <td className="px-4 py-2.5 text-right text-slate-500">{fmtGramos(t.total.plata)}</td>
                   </tr>
                 ))}
               </tbody>

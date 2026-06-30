@@ -34,16 +34,21 @@ export async function GET(req: NextRequest) {
     const resultados = await Promise.all(
       tiendas.map(async (tienda) => {
         const serie = await getSerieMensual(operacion, desde12, hasta, tienda);
-        const map = new Map<string, { euros: number; gramos: number; unidades: number }>();
+        const map = new Map<string, { euros: number; unidades: number; oro: number; plata: number }>();
         for (const s of serie) {
           const d = new Date(s.mes);
-          map.set(`${d.getUTCFullYear()}-${d.getUTCMonth()}`, { euros: Number(s.euros), gramos: Number(s.gramos), unidades: Number(s.unidades) });
+          map.set(`${d.getUTCFullYear()}-${d.getUTCMonth()}`, { euros: Number(s.euros), unidades: Number(s.unidades), oro: Number(s.gramos_oro), plata: Number(s.gramos_plata) });
         }
-        const euros: number[] = [], gramos: number[] = [], unidades: number[] = [];
-        for (const e of eje) { const v = map.get(e.key); euros.push(v?.euros ?? 0); gramos.push(v?.gramos ?? 0); unidades.push(v?.unidades ?? 0); }
+        const euros: number[] = [], unidades: number[] = [], oro: number[] = [], plata: number[] = [], ambos: number[] = [];
+        for (const e of eje) {
+          const v = map.get(e.key);
+          euros.push(v?.euros ?? 0); unidades.push(v?.unidades ?? 0);
+          oro.push(v?.oro ?? 0); plata.push(v?.plata ?? 0); ambos.push((v?.oro ?? 0) + (v?.plata ?? 0));
+        }
+        const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
         return {
-          tienda, euros, gramos, unidades,
-          total: { euros: euros.reduce((a, b) => a + b, 0), gramos: gramos.reduce((a, b) => a + b, 0), unidades: unidades.reduce((a, b) => a + b, 0) },
+          tienda, euros, unidades, oro, plata, ambos,
+          total: { euros: sum(euros), unidades: sum(unidades), oro: sum(oro), plata: sum(plata), ambos: sum(ambos) },
         };
       })
     );
