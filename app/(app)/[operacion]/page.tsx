@@ -8,6 +8,7 @@ import {
   getMapaCalor,
   getDesgloseAnalitico,
   getRangoFechas,
+  getTiendas,
   rangoMes,
   type DimAnalitica,
 } from "@/lib/queries";
@@ -22,6 +23,7 @@ import { AnalyticBreakdown } from "@/components/analytic-breakdown";
 import { MovimientosTable } from "@/components/movimientos-table";
 import { HeatmapActividad } from "@/components/heatmap-actividad";
 import { PeriodSelector } from "@/components/period-selector";
+import { TiendaSelector } from "@/components/tienda-selector";
 import { EmptyState } from "@/components/empty-state";
 import {
   Coins, Euro, Receipt, Scale, ShoppingBag, Layers,
@@ -61,7 +63,7 @@ export default async function DetallePage({
   searchParams,
 }: {
   params: Promise<{ operacion: string }>;
-  searchParams: Promise<{ anio?: string; mes?: string }>;
+  searchParams: Promise<{ anio?: string; mes?: string; tienda?: string }>;
 }) {
   const { operacion } = await params;
   if (!(operacion in OPERACIONES)) notFound();
@@ -69,7 +71,8 @@ export default async function DetallePage({
   const meta = OPERACIONES[key];
 
   const sp = await searchParams;
-  const rango = await getRangoFechas();
+  const tienda = sp.tienda || null;
+  const [rango, tiendas] = await Promise.all([getRangoFechas(), getTiendas()]);
   if (!rango.max) return <EmptyState />;
 
   const ref = new Date(rango.max);
@@ -83,29 +86,31 @@ export default async function DetallePage({
 
   const sb = await createClient();
 
+  let recientesQ = sb.from(key)
+    .select("fecha_operacion,codigo,tipo_operacion,descripcion_prenda,familia_prenda,quilate_prenda,metodo_pago,tienda,empleado,peso_g,pago_eur")
+    .gte("fecha_operacion", desde).lt("fecha_operacion", hasta);
+  let conteoQ = sb.from(key).select("*", { count: "exact", head: true })
+    .gte("fecha_operacion", desde).lt("fecha_operacion", hasta);
+  if (tienda) { recientesQ = recientesQ.eq("tienda", tienda); conteoQ = conteoQ.eq("tienda", tienda); }
+
   const [
     kpis, kpisPrev, kpisYtd, kpisYtdPrev, extra,
     serieMensual, serieDiaria, actividad, mapaCalor, recientes, conteo,
     metales, ...desgloses
   ] = await Promise.all([
-    getKpis(desde, hasta),
-    getKpis(prev.desde, prev.hasta),
-    getKpis(ytdDesde, hasta),
-    getKpis(ytdPrevDesde, prev.hasta),
-    getKpisExtra(key, desde, hasta),
-    getSerieMensual(key, desde12, hasta),
-    getSerieDiaria(key, desde, hasta),
-    getActividadSemana(key, desde, hasta),
-    getMapaCalor(key, desde12, hasta),
-    sb.from(key)
-      .select("fecha_operacion,codigo,tipo_operacion,descripcion_prenda,familia_prenda,quilate_prenda,metodo_pago,tienda,empleado,peso_g,pago_eur")
-      .gte("fecha_operacion", desde).lt("fecha_operacion", hasta)
-      .order("fecha_operacion", { ascending: false })
-      .range(0, 2999),
-    sb.from(key).select("*", { count: "exact", head: true })
-      .gte("fecha_operacion", desde).lt("fecha_operacion", hasta),
+    getKpis(desde, hasta, tienda),
+    getKpis(prev.desde, prev.hasta, tienda),
+    getKpis(ytdDesde, hasta, tienda),
+    getKpis(ytdPrevDesde, prev.hasta, tienda),
+    getKpisExtra(key, desde, hasta, tienda),
+    getSerieMensual(key, desde12, hasta, tienda),
+    getSerieDiaria(key, desde, hasta, tienda),
+    getActividadSemana(key, desde, hasta, tienda),
+    getMapaCalor(key, desde12, hasta, tienda),
+    recientesQ.order("fecha_operacion", { ascending: false }).range(0, 2999),
+    conteoQ,
     key === "compras" ? getPreciosMetales().catch(() => null) : Promise.resolve(null),
-    ...DIMS.map((d) => getDesgloseAnalitico(key, d.key, desde, hasta, prev.desde, prev.hasta)),
+    ...DIMS.map((d) => getDesgloseAnalitico(key, d.key, desde, hasta, prev.desde, prev.hasta, tienda)),
   ]);
 
   const k = kpis.find((r) => r.operacion === key);
@@ -163,8 +168,13 @@ export default async function DetallePage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">{meta.label} · contabilidad analítica · {MESES[mes]} {anio}</p>
-        <PeriodSelector anio={anio} mes={mes} anios={anios} />
+        <p className="text-sm text-slate-500">
+          {meta.label} · {tienda ? tienda : "todas las tiendas"} · {MESES[mes]} {anio}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <TiendaSelector tiendas={tiendas} actual={tienda ?? ""} />
+          <PeriodSelector anio={anio} mes={mes} anios={anios} />
+        </div>
       </div>
 
       {/* KPIs principales */}

@@ -24,9 +24,15 @@ export interface RankingRow {
   unidades: number;
 }
 
-export async function getKpis(desde: string, hasta: string): Promise<KpiRow[]> {
+export async function getTiendas(): Promise<string[]> {
   const sb = await createClient();
-  const { data, error } = await sb.rpc("kpis_por_operacion", { desde, hasta });
+  const { data } = await sb.rpc("tiendas");
+  return (data ?? []).map((r: any) => r.tienda as string);
+}
+
+export async function getKpis(desde: string, hasta: string, tienda?: string | null): Promise<KpiRow[]> {
+  const sb = await createClient();
+  const { data, error } = await sb.rpc("kpis_por_operacion", { desde, hasta, p_tienda: tienda ?? null });
   if (error) throw new Error(error.message);
   return (data ?? []) as KpiRow[];
 }
@@ -34,13 +40,12 @@ export async function getKpis(desde: string, hasta: string): Promise<KpiRow[]> {
 export async function getSerieMensual(
   operacion: OperacionKey | "todas",
   desde: string,
-  hasta: string
+  hasta: string,
+  tienda?: string | null
 ): Promise<SerieRow[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("serie_mensual", {
-    p_operacion: operacion,
-    desde,
-    hasta,
+    p_operacion: operacion, desde, hasta, p_tienda: tienda ?? null,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as SerieRow[];
@@ -51,15 +56,12 @@ export async function getRanking(
   dim: "tienda" | "empleado" | "familia_prenda" | "plataforma",
   desde: string,
   hasta: string,
-  limit = 10
+  limit = 10,
+  tienda?: string | null
 ): Promise<RankingRow[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("ranking", {
-    p_operacion: operacion,
-    p_dim: dim,
-    desde,
-    hasta,
-    p_limit: limit,
+    p_operacion: operacion, p_dim: dim, desde, hasta, p_limit: limit, p_tienda: tienda ?? null,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as RankingRow[];
@@ -99,13 +101,12 @@ export interface FilaAnalitica {
 export async function getSerieDiaria(
   operacion: OperacionKey | "todas",
   desde: string,
-  hasta: string
+  hasta: string,
+  tienda?: string | null
 ): Promise<{ dia: string; euros: number; unidades: number }[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("serie_diaria", {
-    p_operacion: operacion,
-    desde,
-    hasta,
+    p_operacion: operacion, desde, hasta, p_tienda: tienda ?? null,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as any[];
@@ -115,14 +116,12 @@ async function getDesglose(
   operacion: OperacionKey | "todas",
   dim: DimAnalitica,
   desde: string,
-  hasta: string
+  hasta: string,
+  tienda?: string | null
 ): Promise<DesgloseRow[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("desglose", {
-    p_operacion: operacion,
-    p_dim: dim,
-    desde,
-    hasta,
+    p_operacion: operacion, p_dim: dim, desde, hasta, p_tienda: tienda ?? null,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as DesgloseRow[];
@@ -135,11 +134,12 @@ export async function getDesgloseAnalitico(
   desde: string,
   hasta: string,
   prevDesde: string,
-  prevHasta: string
+  prevHasta: string,
+  tienda?: string | null
 ): Promise<FilaAnalitica[]> {
   const [actual, anterior] = await Promise.all([
-    getDesglose(operacion, dim, desde, hasta),
-    getDesglose(operacion, dim, prevDesde, prevHasta),
+    getDesglose(operacion, dim, desde, hasta, tienda),
+    getDesglose(operacion, dim, prevDesde, prevHasta, tienda),
   ]);
   const totalEuros = actual.reduce((s, r) => s + Math.abs(Number(r.euros)), 0) || 1;
   const prevMap = new Map(anterior.map((r) => [r.etiqueta, Number(r.euros)]));
@@ -165,13 +165,12 @@ export async function getDesgloseAnalitico(
 export async function getActividadSemana(
   operacion: OperacionKey | "todas",
   desde: string,
-  hasta: string
+  hasta: string,
+  tienda?: string | null
 ): Promise<{ dow: number; euros: number; unidades: number }[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("actividad_semana", {
-    p_operacion: operacion,
-    desde,
-    hasta,
+    p_operacion: operacion, desde, hasta, p_tienda: tienda ?? null,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as any[];
@@ -180,13 +179,12 @@ export async function getActividadSemana(
 export async function getMapaCalor(
   operacion: OperacionKey | "todas",
   desde: string,
-  hasta: string
+  hasta: string,
+  tienda?: string | null
 ): Promise<{ tienda: string; dow: number; hora: number; euros: number; unidades: number }[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("mapa_calor", {
-    p_operacion: operacion,
-    desde,
-    hasta,
+    p_operacion: operacion, desde, hasta, p_tienda: tienda ?? null,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as any[];
@@ -204,13 +202,12 @@ export interface KpisExtra {
 export async function getKpisExtra(
   operacion: OperacionKey | "todas",
   desde: string,
-  hasta: string
+  hasta: string,
+  tienda?: string | null
 ): Promise<KpisExtra> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("kpis_extra", {
-    p_operacion: operacion,
-    desde,
-    hasta,
+    p_operacion: operacion, desde, hasta, p_tienda: tienda ?? null,
   });
   if (error) throw new Error(error.message);
   const r = (data ?? [])[0] ?? {};
