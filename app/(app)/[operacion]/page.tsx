@@ -273,7 +273,7 @@ export default async function DetallePage({
       </div>
 
       {/* Mapa de calor día × hora */}
-      <HeatmapActividad data={mapaCalor} />
+      <HeatmapActividad data={mapaCalor} operacion={key} tiendaPagina={tienda} />
 
       {/* Comparativa de tiendas */}
       {!tienda && tiendas.length > 1 && <TiendaComparator operacion={key} tiendas={tiendas} />}

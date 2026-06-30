@@ -6,23 +6,23 @@
 
 drop view if exists public.operaciones_unificadas;
 create view public.operaciones_unificadas as
-  select 'ventas'::text as operacion, tipo_operacion, fecha_operacion, codigo, familia_prenda,
+  select 'ventas'::text as operacion, tipo_operacion, fecha_operacion, codigo, descripcion_prenda, familia_prenda,
          quilate_prenda, origen_metal, peso_g, pago_eur, metodo_pago, tienda, empleado, plataforma
     from public.ventas
   union all
-  select 'compras', tipo_operacion, fecha_operacion, codigo, familia_prenda,
+  select 'compras', tipo_operacion, fecha_operacion, codigo, descripcion_prenda, familia_prenda,
          quilate_prenda, null::text, peso_g, pago_eur, metodo_pago, tienda, empleado, plataforma
     from public.compras
   union all
-  select 'reservas', tipo_operacion, fecha_operacion, codigo, familia_prenda,
+  select 'reservas', tipo_operacion, fecha_operacion, codigo, descripcion_prenda, familia_prenda,
          quilate_prenda, origen_metal, peso_g, pago_eur, metodo_pago, tienda, empleado, plataforma
     from public.reservas
   union all
-  select 'recuperables', tipo_operacion, fecha_operacion, codigo, familia_prenda,
+  select 'recuperables', tipo_operacion, fecha_operacion, codigo, descripcion_prenda, familia_prenda,
          quilate_prenda, null::text, peso_g, pago_eur, metodo_pago, tienda, empleado, plataforma
     from public.recuperables
   union all
-  select 'trabajos', tipo_operacion, fecha_operacion, codigo, familia_prenda,
+  select 'trabajos', tipo_operacion, fecha_operacion, codigo, descripcion_prenda, familia_prenda,
          quilate_prenda, null::text, peso_g, pago_eur, metodo_pago, tienda, empleado, plataforma
     from public.trabajos;
 
@@ -195,6 +195,23 @@ begin
 end;
 $$;
 
+-- Detalle de una celda del mapa de calor (top movimientos de ese día de semana × hora)
+create or replace function public.detalle_celda(
+  p_operacion text, p_dow int, p_hora int, desde timestamptz, hasta timestamptz, p_tienda text default null
+)
+returns table(fecha timestamptz, codigo text, descripcion text, familia text, empleado text, tienda text, peso numeric, importe numeric)
+language sql stable as $$
+  select fecha_operacion, codigo, descripcion_prenda, familia_prenda, empleado, tienda, peso_g, pago_eur
+    from public.operaciones_unificadas
+   where (p_operacion = 'todas' or operacion = p_operacion)
+     and fecha_operacion >= desde and fecha_operacion < hasta
+     and (p_tienda is null or tienda = p_tienda)
+     and extract(dow  from (fecha_operacion at time zone 'Atlantic/Canary'))::int = p_dow
+     and extract(hour from (fecha_operacion at time zone 'Atlantic/Canary'))::int = p_hora
+   order by abs(pago_eur) desc nulls last
+   limit 50;
+$$;
+
 -- Lista de tiendas (para el selector)
 create or replace function public.tiendas()
 returns table(tienda text)
@@ -219,5 +236,6 @@ grant execute on function public.desglose_multi(text,text[],timestamptz,timestam
 grant execute on function public.actividad_semana(text,timestamptz,timestamptz,text) to authenticated;
 grant execute on function public.kpis_extra(text,timestamptz,timestamptz,text) to authenticated;
 grant execute on function public.mapa_calor(text,timestamptz,timestamptz,text) to authenticated;
+grant execute on function public.detalle_celda(text,int,int,timestamptz,timestamptz,text) to authenticated;
 grant execute on function public.tiendas() to authenticated;
 grant execute on function public.rango_fechas() to authenticated;
