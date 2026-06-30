@@ -31,6 +31,8 @@ returns text language sql immutable as $$
   select case
     when lower(coalesce(quilate,'')) like '%oro%'   then 'oro'
     when lower(coalesce(quilate,'')) like '%plata%' then 'plata'
+    when upper(coalesce(quilate,'')) like 'AU%'     then 'oro'    -- p. ej. AU18, AU24 (reservas)
+    when upper(coalesce(quilate,'')) like 'AG%'     then 'plata'  -- p. ej. AG926, AG1000
     else 'otro' end;
 $$;
 
