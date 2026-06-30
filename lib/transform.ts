@@ -120,7 +120,11 @@ export function buildRow(
     if (FECHAS.has(field)) out[field] = toDate(raw);
     else if (NUMERICOS.has(field)) out[field] = toNumber(raw);
     else if (BOOLEANOS.has(field)) out[field] = toBool(raw);
-    else out[field] = raw === undefined || raw === "" ? null : String(raw).trim();
+    else {
+      // null/undefined → NULL real (antes String(null) guardaba el texto "null")
+      const s = raw === undefined || raw === null ? "" : String(raw).trim();
+      out[field] = s === "" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined" ? null : s;
+    }
   }
 
   // Hash determinista de los campos significativos → idempotencia en upsert

@@ -15,7 +15,7 @@ returns table(total bigint, recurrentes bigint, ltv_medio numeric, ticket_medio 
 language sql stable as $$
   with base as (
     select cliente_id, count(*) f, coalesce(sum(pago_eur),0) m,
-           bool_or(cliente_email is not null and cliente_email <> '') tiene_email
+           bool_or(cliente_email like '%@%') tiene_email
       from public.reservas where cliente_id is not null and trim(cliente_id) <> ''
       group by cliente_id
   )
@@ -88,7 +88,7 @@ returns table(
          max(fecha_operacion), count(*), coalesce(sum(pago_eur),0)
     from public.reservas
    where cliente_id is not null and trim(cliente_id) <> ''
-     and cliente_email is not null and trim(cliente_email) <> ''
+     and cliente_email like '%@%'
    group by cliente_id order by 9 desc limit p_limit;
 $$;
 
