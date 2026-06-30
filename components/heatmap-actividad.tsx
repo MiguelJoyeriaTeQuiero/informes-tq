@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fmtEur, fmtNum } from "@/lib/format";
+import { fmtEur, fmtNum, fmtGramos } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+type Metrica = "unidades" | "euros" | "gramos";
 
 interface Celda {
   tienda: string;
@@ -10,6 +12,7 @@ interface Celda {
   hora: number;
   euros: number;
   unidades: number;
+  gramos: number;
 }
 
 const DIAS = [
@@ -27,8 +30,11 @@ function color(t: number) {
 }
 
 export function HeatmapActividad({ data }: { data: Celda[] }) {
-  const [metrica, setMetrica] = useState<"unidades" | "euros">("unidades");
+  const [metrica, setMetrica] = useState<Metrica>("unidades");
   const [tienda, setTienda] = useState<string>(TODAS);
+
+  const valorDe = (c: { euros: number; unidades: number; gramos: number }) =>
+    metrica === "euros" ? Math.abs(c.euros) : metrica === "gramos" ? c.gramos : c.unidades;
 
   const tiendas = useMemo(
     () => [...new Set(data.map((c) => c.tienda).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
@@ -37,30 +43,30 @@ export function HeatmapActividad({ data }: { data: Celda[] }) {
 
   // Agrega por (dow,hora) según la tienda seleccionada (o todas)
   const { mapa, horas, max, pico } = useMemo(() => {
-    const agg = new Map<string, { dow: number; hora: number; euros: number; unidades: number }>();
+    const agg = new Map<string, { dow: number; hora: number; euros: number; unidades: number; gramos: number }>();
     for (const c of data) {
       if (tienda !== TODAS && c.tienda !== tienda) continue;
       const key = `${c.dow}-${c.hora}`;
-      const cur = agg.get(key) ?? { dow: c.dow, hora: c.hora, euros: 0, unidades: 0 };
+      const cur = agg.get(key) ?? { dow: c.dow, hora: c.hora, euros: 0, unidades: 0, gramos: 0 };
       cur.euros += Number(c.euros);
       cur.unidades += Number(c.unidades);
+      cur.gramos += Number(c.gramos ?? 0);
       agg.set(key, cur);
     }
     let hMin = 23, hMax = 0, max = 0;
-    let pico: { dow: number; hora: number; euros: number; unidades: number } | null = null;
+    let pico: { dow: number; hora: number; euros: number; unidades: number; gramos: number } | null = null;
     for (const c of agg.values()) {
       if (c.unidades > 0) { hMin = Math.min(hMin, c.hora); hMax = Math.max(hMax, c.hora); }
-      const v = metrica === "euros" ? Math.abs(c.euros) : c.unidades;
+      const v = valorDe(c);
       if (v > max) max = v;
-      const vp = pico ? (metrica === "euros" ? Math.abs(pico.euros) : pico.unidades) : -1;
-      if (v > vp) pico = c;
+      if (v > (pico ? valorDe(pico) : -1)) pico = c;
     }
     if (hMin > hMax) { hMin = 9; hMax = 21; }
     const horas = Array.from({ length: hMax - hMin + 1 }, (_, i) => hMin + i);
     return { mapa: agg, horas, max: max || 1, pico };
   }, [data, metrica, tienda]);
 
-  const fmt = metrica === "euros" ? fmtEur : fmtNum;
+  const fmt = metrica === "euros" ? fmtEur : metrica === "gramos" ? fmtGramos : fmtNum;
   const labelDia = (dow: number) => DIAS.find((d) => d.dow === dow)?.label ?? "";
 
   return (
@@ -82,16 +88,13 @@ export function HeatmapActividad({ data }: { data: Celda[] }) {
             {tiendas.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <div className="flex rounded-xl bg-slate-100 p-1">
-            <button onClick={() => setMetrica("unidades")}
-              className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition",
-                metrica === "unidades" ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
-              Operaciones
-            </button>
-            <button onClick={() => setMetrica("euros")}
-              className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition",
-                metrica === "euros" ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
-              Importe €
-            </button>
+            {([["unidades", "Operaciones"], ["euros", "Importe €"], ["gramos", "Gramos"]] as [Metrica, string][]).map(([m, l]) => (
+              <button key={m} onClick={() => setMetrica(m)}
+                className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                  metrica === m ? "bg-white text-brand-dark shadow-sm" : "text-slate-500")}>
+                {l}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -102,7 +105,7 @@ export function HeatmapActividad({ data }: { data: Celda[] }) {
           <span className="font-semibold text-brand-dark">
             {labelDia(pico.dow)} a las {String(pico.hora).padStart(2, "0")}:00
           </span>{" "}
-          · {fmt(metrica === "euros" ? Math.abs(pico.euros) : pico.unidades)}
+          · {fmt(valorDe(pico))}
         </p>
       )}
 
@@ -119,7 +122,7 @@ export function HeatmapActividad({ data }: { data: Celda[] }) {
               <div className="w-10 shrink-0 pr-2 text-right text-xs font-medium text-slate-500">{d.label}</div>
               {horas.map((h) => {
                 const c = mapa.get(`${d.dow}-${h}`);
-                const v = c ? (metrica === "euros" ? Math.abs(c.euros) : c.unidades) : 0;
+                const v = c ? valorDe(c) : 0;
                 const t = v / max;
                 const esPico = pico && c && c.dow === pico.dow && c.hora === pico.hora && v > 0;
                 return (

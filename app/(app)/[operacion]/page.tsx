@@ -22,6 +22,7 @@ import { TrendToggle } from "@/components/trend-toggle";
 import { AnalyticBreakdown } from "@/components/analytic-breakdown";
 import { MovimientosTable } from "@/components/movimientos-table";
 import { HeatmapActividad } from "@/components/heatmap-actividad";
+import { TiendaComparator } from "@/components/tienda-comparator";
 import { PeriodSelector } from "@/components/period-selector";
 import { TiendaSelector } from "@/components/tienda-selector";
 import { EmptyState } from "@/components/empty-state";
@@ -273,6 +274,9 @@ export default async function DetallePage({
 
       {/* Mapa de calor día × hora */}
       <HeatmapActividad data={mapaCalor} />
+
+      {/* Comparativa de tiendas */}
+      {!tienda && tiendas.length > 1 && <TiendaComparator operacion={key} tiendas={tiendas} />}
 
       {/* Desglose analítico multidimensional */}
       <AnalyticBreakdown secciones={secciones} />

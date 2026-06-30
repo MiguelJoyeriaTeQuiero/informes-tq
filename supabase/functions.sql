@@ -43,6 +43,7 @@ drop function if exists public.desglose(text, text, timestamptz, timestamptz);
 drop function if exists public.kpis_extra(text, timestamptz, timestamptz);
 drop function if exists public.actividad_semana(text, timestamptz, timestamptz);
 drop function if exists public.mapa_calor(text, timestamptz, timestamptz);
+drop function if exists public.mapa_calor(text, timestamptz, timestamptz, text);
 
 -- KPIs por operación
 create or replace function public.kpis_por_operacion(desde timestamptz, hasta timestamptz, p_tienda text default null)
@@ -148,12 +149,12 @@ language sql stable as $$
 $$;
 
 create or replace function public.mapa_calor(p_operacion text, desde timestamptz, hasta timestamptz, p_tienda text default null)
-returns table(tienda text, dow int, hora int, euros numeric, unidades bigint)
+returns table(tienda text, dow int, hora int, euros numeric, unidades bigint, gramos numeric)
 language sql stable as $$
   select coalesce(nullif(trim(tienda), ''), '(sin dato)'),
          extract(dow  from (fecha_operacion at time zone 'Atlantic/Canary'))::int,
          extract(hour from (fecha_operacion at time zone 'Atlantic/Canary'))::int,
-         coalesce(sum(pago_eur),0), count(*)
+         coalesce(sum(pago_eur),0), count(*), coalesce(sum(peso_g),0)
     from public.operaciones_unificadas
    where (p_operacion = 'todas' or operacion = p_operacion)
      and fecha_operacion >= desde and fecha_operacion < hasta

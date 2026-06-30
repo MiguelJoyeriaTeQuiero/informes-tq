@@ -227,7 +227,7 @@ export async function getMapaCalor(
   desde: string,
   hasta: string,
   tienda?: string | null
-): Promise<{ tienda: string; dow: number; hora: number; euros: number; unidades: number }[]> {
+): Promise<{ tienda: string; dow: number; hora: number; euros: number; unidades: number; gramos: number }[]> {
   const sb = await createClient();
   const { data, error } = await sb.rpc("mapa_calor", {
     p_operacion: operacion, desde, hasta, p_tienda: tienda ?? null,
