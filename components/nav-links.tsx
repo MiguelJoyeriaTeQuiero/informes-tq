@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, ShoppingBag, ShoppingCart, CalendarClock, RefreshCcw,
   Wrench, Boxes, Presentation, Settings, Truck, LineChart, Target, Users,
+  Wallet, Award, Bell, Sparkles,
 } from "lucide-react";
 
 type NavItem =
@@ -14,8 +15,12 @@ type NavItem =
 
 export const NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/asistente", label: "Asistente IA", icon: Sparkles },
+  { href: "/alertas", label: "Alertas", icon: Bell },
   { href: "/finanzas", label: "Finanzas y rentabilidad", icon: LineChart },
+  { href: "/tesoreria", label: "Tesorería", icon: Wallet },
   { href: "/objetivos", label: "Objetivos", icon: Target },
+  { href: "/bono", label: "Bono variable", icon: Award },
   { href: "/clientes", label: "Clientes", icon: Users },
   { tipo: "sep", label: "Operaciones" },
   { href: "/ventas", label: "Ventas", icon: ShoppingBag },
@@ -34,9 +39,11 @@ export const NAV: NavItem[] = [
 export function NavLinks({
   permisos,
   onNavigate,
+  alertCount = 0,
 }: {
   permisos: { config: boolean };
   onNavigate?: () => void;
+  alertCount?: number;
 }) {
   const pathname = usePathname();
   return (
@@ -63,7 +70,12 @@ export function NavLinks({
             )}
           >
             <Icon className="h-[18px] w-[18px]" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.href === "/alertas" && alertCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                {alertCount}
+              </span>
+            )}
           </Link>
         );
       })}

@@ -8,8 +8,12 @@ import type { Profile } from "@/lib/types";
 const TITULOS: Record<string, string> = {
   "/": "Dashboard general",
   "/finanzas": "Finanzas y rentabilidad",
+  "/tesoreria": "Tesorería",
   "/objetivos": "Objetivos",
+  "/bono": "Bono variable",
   "/clientes": "Analítica de clientes",
+  "/alertas": "Centro de alertas",
+  "/asistente": "Asistente IA",
   "/ventas": "Ventas",
   "/compras": "Compras",
   "/reservas": "Reservas",
@@ -26,11 +30,13 @@ export function Topbar({
   profile,
   email,
   permisos,
+  alertCount,
 }: {
   metals: React.ReactNode;
   profile: Profile | null;
   email?: string;
   permisos: { config: boolean };
+  alertCount?: number;
 }) {
   const pathname = usePathname();
   const titulo =
@@ -41,7 +47,7 @@ export function Topbar({
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-2 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6">
       <div className="flex min-w-0 items-center gap-2">
-        <MobileNav permisos={permisos} />
+        <MobileNav permisos={permisos} alertCount={alertCount} />
         <h1 className="truncate font-display text-lg text-slate-900 sm:text-xl">{titulo}</h1>
       </div>
       <div className="flex items-center gap-3 sm:gap-6">

@@ -13,6 +13,7 @@
     "sync:rentabilidad": "tsx scripts/sync-rentabilidad.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "clsx": "^2.1.1",

@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "./logo";
 import { NavLinks } from "./nav-links";
 
-export function MobileNav({ permisos }: { permisos: { config: boolean } }) {
+export function MobileNav({ permisos, alertCount }: { permisos: { config: boolean }; alertCount?: number }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -44,7 +44,7 @@ export function MobileNav({ permisos }: { permisos: { config: boolean } }) {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <NavLinks permisos={permisos} onNavigate={() => setOpen(false)} />
+              <NavLinks permisos={permisos} alertCount={alertCount} onNavigate={() => setOpen(false)} />
               <div className="border-t border-white/10 p-4 text-[11px] text-white/40">Joyerías Te Quiero · v1.0</div>
             </div>
           </div>,
